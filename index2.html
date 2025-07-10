@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workout Timer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #f5f5f5;
+            touch-action: none;
+            overflow: hidden;
+        }
+        
+        header {
+            padding: 15px;
+            text-align: center;
+            background: #2c3e50;
+            color: white;
+        }
+        
+        .timer-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 10px;
+        }
+        
+        .dial-container {
+            position: relative;
+            width: 90vw;
+            height: 90vw;
+            max-width: 350px;
+            max-height: 350px;
+            margin: 0 auto;
+        }
+        
+        .dial {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #ecf0f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        
+        .dial-progress {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            clip: rect(0, 100%, 100%, 50%);
+        }
+        
+        .dial-progress-fill {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            clip: rect(0, 50%, 100%, 0);
+            background: #3498db;
+            transform: rotate(0deg);
+        }
+        
+        .dial-inner {
+            position: relative;
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+        }
+        
+        .dial-value {
+            font-size: 3em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .dial-label {
+            font-size: 1.2em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        
+        .dial-handle {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #3498db;
+            border-radius: 50%;
+            top: 5%;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: pointer;
+            z-index: 3;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 15px;
+        }
+        
+        .iteration-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .iteration-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #bdc3c7;
+            color: white;
+            font-size: 1.2em;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .iteration-btn.selected {
+            background: #2ecc71;
+            transform: scale(1.1);
+        }
+        
+        .iteration-label {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #7f8c8d;
+            font-weight: bold;
+        }
+        
+        button {
+            padding: 15px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 25px;
+            background: #2ecc71;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        #pause-btn {
+            background: #f39c12;
+        }
+        
+        #reset-btn {
+            background: #e74c3c;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        
+        /* Active timer states */
+        .dial.active .dial-progress-fill {
+            background: #ff6b6b;
+        }
+        
+        .dial.active.rest .dial-progress-fill {
+            background: #48dbfb;
+        }
+        
+        .dial.active .dial-handle {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Workout Timer</h1>
+        <div class="status" id="status">Set your workout</div>
+    </header>
+    
+    <div class="timer-container">
+        <!-- Work Timer Dial -->
+        <div class="dial-container">
+            <div class="dial" id="work-dial">
+                <div class="dial-progress">
+                    <div class="dial-progress-fill" id="work-progress"></div>
+                </div>
+                <div class="dial-inner">
+                    <div class="dial-value" id="work-value">30</div>
+                    <div class="dial-label">Work</div>
+                </div>
+                <div class="dial-handle" id="work-handle"></div>
+            </div>
+        </div>
+        
+        <!-- Rest Timer Dial -->
+        <div class="dial-container">
+            <div class="dial" id="rest-dial">
+                <div class="dial-progress">
+                    <div class="dial-progress-fill" id="rest-progress"></div>
+                </div>
+                <div class="dial-inner">
+                    <div class="dial-value" id="rest-value">10</div>
+                    <div class="dial-label">Rest</div>
+                </div>
+                <div class="dial-handle" id="rest-handle"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="iteration-label">Iterations</div>
+        <div class="iteration-controls">
+            <button class="iteration-btn selected" data-iterations="3">3</button>
+            <button class="iteration-btn" data-iterations="4">4</button>
+            <button class="iteration-btn" data-iterations="5">5</button>
+        </div>
+        
+        <button id="start-btn">Start Workout</button>
+        <button id="pause-btn" disabled>Pause</button>
+        <button id="reset-btn">Reset</button>
+    </div>
+
+    <audio id="start-sound" preload="auto"></audio>
+    <audio id="end-sound" preload="auto"></audio>
+    <audio id="rest-end-sound" preload="auto"></audio>
+
+    <script>
+        // DOM Elements
+        const workDial = document.getElementById('work-dial');
+        const workProgress = document.getElementById('work-progress');
+        const workValue = document.getElementById('work-value');
+        const workHandle = document.getElementById('work-handle');
+        
+        const restDial = document.getElementById('rest-dial');
+        const restProgress = document.getElementById('rest-progress');
+        const restValue = document.getElementById('rest-value');
+        const restHandle = document.getElementById('rest-handle');
+        
+        const statusDisplay = document.getElementById('status');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const iterationButtons = document.querySelectorAll('.iteration-btn');
+        
+        // Timer Variables
+        let workDuration = 30;
+        let restDuration = 10;
+        let iterations = 3;
+        let currentIteration = 0;
+        let isWorkPhase = true;
+        let isRunning = false;
+        let timerInterval;
+        
+        // UI State
+        let isSettingTime = true;
+        let isDragging = false;
+        let currentDial = null;
+        
+        // Initialize
+        function init() {
+            setupDials();
+            setupIterationButtons();
+            updateStatus();
+            
+            // Audio setup
+            document.addEventListener('click', initAudio, { once: true });
+        }
+        
+        // Dial Controls
+        function setupDials() {
+            updateDial(workDial, workProgress, workValue, workDuration, 60);
+            updateDial(restDial, restProgress, restValue, restDuration, 60);
+            
+            // Event listeners for both dials
+            [workDial, restDial].forEach(dial => {
+                dial.addEventListener('mousedown', startDrag);
+                dial.addEventListener('touchstart', startDrag, { passive: false });
+            });
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag, { passive: false });
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+        }
+        
+        function startDrag(e) {
+            if (!isSettingTime) return;
+            
+            isDragging = true;
+            currentDial = e.currentTarget;
+            e.preventDefault();
+            updateDialFromEvent(e);
+        }
+        
+        function drag(e) {
+            if (!isDragging || !isSettingTime) return;
+            e.preventDefault();
+            updateDialFromEvent(e);
+        }
+        
+        function endDrag() {
+            isDragging = false;
+            currentDial = null;
+        }
+        
+        function updateDialFromEvent(e) {
+            const rect = currentDial.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            const angle = Math.atan2(clientY - centerY, clientX - centerX) * (180 / Math.PI) + 90;
+            const normalizedAngle = angle < 0 ? angle + 360 : angle;
+            const percentage = normalizedAngle / 360;
+            
+            const maxValue = 60;
+            let value = Math.round(percentage * maxValue);
+            value = Math.max(5, Math.min(maxValue, value)); // Clamp between 5-60
+            
+            if (currentDial === workDial) {
+                workDuration = value;
+                updateDial(workDial, workProgress, workValue, workDuration, maxValue);
+            } else {
+                restDuration = value;
+                updateDial(restDial, restProgress, restValue, restDuration, maxValue);
+            }
+        }
+        
+        function updateDial(dial, progress, valueDisplay, value, maxValue) {
+            const degrees = (value / maxValue) * 360;
+            const fillRotation = degrees > 180 ? 180 : degrees;
+            const clipRotation = degrees > 180 ? degrees - 180 : 0;
+            
+            progress.style.transform = `rotate(${fillRotation}deg)`;
+            if (progress.nextElementSibling) {
+                progress.nextElementSibling.style.transform = `rotate(${clipRotation}deg)`;
+            }
+            
+            valueDisplay.textContent = value;
+            
+            // Position handle
+            const handle = dial.querySelector('.dial-handle');
+            if (handle && isSettingTime) {
+                const radians = (degrees - 90) * (Math.PI / 180);
+                const size = dial.offsetWidth;
+                const x = Math.cos(radians) * (size / 2 - 15) + size / 2;
+                const y = Math.sin(radians) * (size / 2 - 15) + size / 2;
+                
+                handle.style.left = `${x}px`;
+                handle.style.top = `${y}px`;
+            }
+        }
+        
+        // Iteration Controls
+        function setupIterationButtons() {
+            iterationButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    iterationButtons.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    iterations = parseInt(btn.dataset.iterations);
+                });
+            });
+        }
+        
+        // Timer Functions
+        function startTimer() {
+            if (isRunning) return;
+            
+            isSettingTime = false;
+            isRunning = true;
+            currentIteration = 1;
+            isWorkPhase = true;
+            
+            // Update UI for active timer
+            workDial.classList.add('active');
+            restDial.classList.remove('active');
+            workHandle.style.display = 'none';
+            restHandle.style.display = 'none';
+            
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            
+            playSound('start');
+            updateStatus();
+            startCountdown();
+        }
+        
+        function startCountdown() {
+            let currentTime = isWorkPhase ? workDuration : restDuration;
+            const dial = isWorkPhase ? workDial : restDial;
+            const progress = isWorkPhase ? workProgress : restProgress;
+            const valueDisplay = isWorkPhase ? workValue : restValue;
+            
+            timerInterval = setInterval(() => {
+                currentTime--;
+                
+                // Update dial display
+                const maxValue = isWorkPhase ? workDuration : restDuration;
+                updateDial(dial, progress, valueDisplay, currentTime, maxValue);
+                
+                if (currentTime <= 0) {
+                    clearInterval(timerInterval);
+                    handlePhaseComplete();
+                }
+            }, 1000);
+        }
+        
+        function handlePhaseComplete() {
+            if (isWorkPhase) {
+                playSound('end');
+                isWorkPhase = false;
+                workDial.classList.remove('active');
+                restDial.classList.add('active');
+                
+                if (currentIteration >= iterations) {
+                    endWorkout();
+                    return;
+                }
+            } else {
+                playSound('restEnd');
+                isWorkPhase = true;
+                currentIteration++;
+                restDial.classList.remove('active');
+                workDial.classList.add('active');
+                
+                if (currentIteration > iterations) {
+                    endWorkout();
+                    return;
+                }
+            }
+            
+            playSound('start');
+            updateStatus();
+            startCountdown();
+        }
+        
+        function endWorkout() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            isSettingTime = true;
+            
+            workDial.classList.remove('active');
+            restDial.classList.remove('active');
+            workHandle.style.display = 'block';
+            restHandle.style.display = 'block';
+            
+            // Reset dials to full time
+            updateDial(workDial, workProgress, workValue, workDuration, 60);
+            updateDial(restDial, restProgress, restValue, restDuration, 60);
+            
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            
+            updateStatus();
+        }
+        
+        function pauseTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            pauseBtn.disabled = true;
+            startBtn.disabled = false;
+            statusDisplay.textContent = 'Paused';
+        }
+        
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isRunning = false;
+            isSettingTime = true;
+            currentIteration = 0;
+            
+            workDial.classList.remove('active');
+            restDial.classList.remove('active');
+            workHandle.style.display = 'block';
+            restHandle.style.display = 'block';
+            
+            // Reset to initial values
+            workDuration = 30;
+            restDuration = 10;
+            updateDial(workDial, workProgress, workValue, workDuration, 60);
+            updateDial(restDial, restProgress, restValue, restDuration, 60);
+            
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            
+            updateStatus();
+        }
+        
+        // UI Updates
+        function updateStatus() {
+            if (!isRunning) {
+                statusDisplay.textContent = 'Set your workout';
+            } else {
+                const phase = isWorkPhase ? 'WORK' : 'REST';
+                statusDisplay.textContent = `${phase} ${currentIteration}/${iterations}`;
+            }
+        }
+        
+        // Audio Functions
+        function initAudio() {
+            // This just enables audio context - actual files need to be set
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = audioContext.createBuffer(1, 1, 22050);
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+            } catch (e) {
+                console.error("Audio init failed:", e);
+            }
+        }
+        
+        function playSound(type) {
+            const sound = document.getElementById(`${type}-sound`);
+            if (!sound) return;
+            
+            sound.currentTime = 0;
+            sound.play().catch(e => console.warn("Audio play failed:", e));
+        }
+        
+        // Event Listeners
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
